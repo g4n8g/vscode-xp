@@ -42,7 +42,7 @@ The backend can be any Docker container that has XP tools installed. [vscode-xp-
 - host: `/Users/alice/Work/knowledgebase`
 - container: `/workspaces/knowledgebase`
 
-When the extension starts in local macOS VS Code, it offers to configure the container backend. The wizard selects the local knowledgebase path, checks Docker, selects a running container or creates a new tools container, detects the container mount path, detects or asks for the KBT path, and saves settings. If xp-kbt is not found in the selected container, the wizard can download the latest `vxcontrol/xp-kbt` release, let you choose one of the recent releases, or use a manually entered KBT path. A new container is created from `mcr.microsoft.com/dotnet/sdk:8.0`, bind mounts the selected knowledgebase at `/workspaces/knowledgebase`, and then continues through the same KBT installation step.
+When the extension starts in local macOS VS Code, it offers to configure the container backend. The wizard selects the local knowledgebase path, checks Docker, selects a running container or creates a new tools container, detects the container mount path, detects or asks for the KBT path, and saves settings. If xp-kbt is not found in the selected container, the wizard can download the latest `vxcontrol/xp-kbt` release, let you choose one of the recent releases, copy an already unpacked local Linux KBT folder into the container, or use a manually entered KBT path inside the container. A new container is created from `mcr.microsoft.com/dotnet/sdk:8.0`, bind mounts the selected knowledgebase at `/workspaces/knowledgebase`, and then continues through the same KBT installation step.
 
 If the automatic notification was dismissed or you want to rerun setup later, use the `XP: Configure macOS Container Backend` command from the Command Palette.
 
@@ -69,7 +69,7 @@ Troubleshooting:
 - Docker not installed: install and start Docker Desktop.
 - Container not running: start a container with XP tools, choose an already running container in the wizard, or rerun the setup wizard and choose to create a new container.
 - Path mapping failed: check that `workspaceHostPath` points to the local knowledgebase and `workspaceContainerPath` matches the bind mount in the container.
-- Tool not found in container: run the setup wizard again and choose `Download latest xp-kbt`, `Choose xp-kbt version`, or check `xpConfig.docker.kbtBaseDirectory`.
+- Tool not found in container: run the setup wizard again and choose `Download latest xp-kbt`, `Choose xp-kbt version`, `Copy local xp-kbt folder`, or check `xpConfig.docker.kbtBaseDirectory`.
 - Native LSP starts but reports schema warnings: run a build flow that generates the table schema, for example a normalization or correlation test/build that includes schema generation, and then restart or reload the extension if needed.
 - Native LSP is not required on macOS: if you do not have a native `evt-xp-language-server`, leave `xpConfig.lspServerExecutablePath` empty. Docker-backed build/test operations will continue to work without LSP features.
 

@@ -410,13 +410,11 @@ export class MacOSContainerSetup {
     const packagesPath = path.join(candidatePath, 'packages');
     const contentTypesPath = path.join(candidatePath, 'content_types');
     const rulesPath = path.join(candidatePath, 'rules');
-    const metadataPath = path.join(candidatePath, 'metainfo.yaml');
 
     return (
       fs.existsSync(packagesPath) ||
       fs.existsSync(contentTypesPath) ||
-      fs.existsSync(rulesPath) ||
-      fs.existsSync(metadataPath)
+      fs.existsSync(rulesPath)
     );
   }
 
@@ -466,19 +464,7 @@ export class MacOSContainerSetup {
     containerName: string
   ): Promise<string | undefined> {
     for (const candidate of this.KBT_PATH_CANDIDATES) {
-      const result = await ProcessHelper.execute(
-        'docker',
-        [
-          'exec',
-          containerName,
-          'sh',
-          '-lc',
-          `test -x '${candidate}/extra-tools/siemj/siemj' -o -x '${candidate}/build-tools/normalize'`
-        ],
-        { encoding: 'utf-8' }
-      );
-
-      if (result.exitCode === 0) {
+      if (await this.isKbtAvailable(containerName, candidate)) {
         return candidate;
       }
     }
@@ -513,19 +499,23 @@ export class MacOSContainerSetup {
     containerName: string,
     kbtBaseDirectory: string
   ): Promise<boolean> {
-    const result = await ProcessHelper.execute(
-      'docker',
-      [
-        'exec',
-        containerName,
-        'sh',
-        '-lc',
-        `test -x '${kbtBaseDirectory}/extra-tools/siemj/siemj' -o -x '${kbtBaseDirectory}/build-tools/normalize'`
-      ],
-      { encoding: 'utf-8' }
-    );
+    const toolPaths = [
+      path.posix.join(kbtBaseDirectory, 'extra-tools/siemj/siemj'),
+      path.posix.join(kbtBaseDirectory, 'build-tools/normalize')
+    ];
 
-    return result.exitCode === 0;
+    for (const toolPath of toolPaths) {
+      const result = await ProcessHelper.execute(
+        'docker',
+        ['exec', containerName, 'test', '-x', toolPath],
+        { encoding: 'utf-8' }
+      );
+      if (result.exitCode === 0) {
+        return true;
+      }
+    }
+
+    return false;
   }
 
   private static async resolveMissingKbt(
@@ -541,6 +531,10 @@ export class MacOSContainerSetup {
         {
           label: 'Choose xp-kbt version',
           description: 'Select one of the recent GitHub releases'
+        },
+        {
+          label: 'Copy local xp-kbt folder',
+          description: 'Copy an unpacked Linux KBT directory from this Mac into the container'
         },
         {
           label: 'Enter path manually',
@@ -561,6 +555,8 @@ export class MacOSContainerSetup {
         );
       case 'Choose xp-kbt version':
         return this.chooseAndInstallKbtVersion(containerName, outputChannel);
+      case 'Copy local xp-kbt folder':
+        return this.copyLocalKbtIntoContainer(containerName, outputChannel);
       case 'Enter path manually':
         return this.askContainerPath('KBT base directory in container', '/home/coder/xp-kbt');
       default:
@@ -605,6 +601,192 @@ export class MacOSContainerSetup {
     );
   }
 
+  private static async copyLocalKbtIntoContainer(
+    containerName: string,
+    outputChannel: vscode.OutputChannel
+  ): Promise<string | undefined> {
+    const selectedFolders = await vscode.window.showOpenDialog({
+      canSelectFolders: true,
+      canSelectFiles: false,
+      canSelectMany: false,
+      title: 'Select unpacked Linux xp-kbt folder',
+      openLabel: 'Select xp-kbt'
+    });
+
+    if (!selectedFolders?.[0]) {
+      return undefined;
+    }
+
+    const localKbtDirectory = this.findLocalKbtRoot(selectedFolders[0].fsPath);
+    if (!localKbtDirectory) {
+      throw new Error(
+        `The selected folder does not contain a supported Linux xp-kbt layout. Expected 'extra-tools/siemj/siemj' or 'build-tools/normalize'.`
+      );
+    }
+
+    const targetDirectory = await this.askContainerPath(
+      'KBT destination directory in container',
+      '/home/coder/xp-kbt'
+    );
+    if (!targetDirectory) {
+      return undefined;
+    }
+
+    if (targetDirectory === '/') {
+      throw new Error('The container root directory cannot be used as the KBT destination.');
+    }
+
+    const targetExists = await ProcessHelper.execute(
+      'docker',
+      ['exec', containerName, 'test', '-e', targetDirectory],
+      { encoding: 'utf-8' }
+    );
+
+    if (targetExists.exitCode === 0) {
+      const replace = await vscode.window.showWarningMessage(
+        `The container directory '${targetDirectory}' already exists. Replace it with the selected local xp-kbt folder?`,
+        { modal: true },
+        'Replace'
+      );
+      if (replace !== 'Replace') {
+        return undefined;
+      }
+    }
+
+    this.showOutputLinkedNotification(
+      `Copying local xp-kbt into container '${containerName}'. Details are available in the extension output.`,
+      outputChannel
+    );
+    Log.info(`XP container setup: copying local KBT ${localKbtDirectory}`);
+    Log.info(`XP container setup: target ${containerName}:${targetDirectory}`);
+
+    await vscode.window.withProgress(
+      {
+        location: vscode.ProgressLocation.Notification,
+        cancellable: false,
+        title: 'Copying local xp-kbt into the container'
+      },
+      async (progress) => {
+        if (targetExists.exitCode === 0) {
+          Log.progress(progress, `Removing existing ${containerName}:${targetDirectory}`);
+          const removeResult = await ProcessHelper.execute(
+            'docker',
+            ['exec', containerName, 'rm', '-rf', targetDirectory],
+            { encoding: 'utf-8', outputChannel }
+          );
+          if (removeResult.exitCode !== 0) {
+            throw new Error(
+              `Failed to replace '${targetDirectory}' in container '${containerName}'. ${removeResult.output}`
+            );
+          }
+        }
+
+        Log.progress(progress, `Creating ${containerName}:${targetDirectory}`);
+        const createResult = await ProcessHelper.execute(
+          'docker',
+          ['exec', containerName, 'mkdir', '-p', targetDirectory],
+          { encoding: 'utf-8', outputChannel }
+        );
+        if (createResult.exitCode !== 0) {
+          throw new Error(
+            `Failed to create '${targetDirectory}' in container '${containerName}'. ${createResult.output}`
+          );
+        }
+
+        Log.progress(progress, 'Copying xp-kbt files');
+        const sourceContents = `${localKbtDirectory}${path.sep}.`;
+        const copyResult = await ProcessHelper.execute(
+          'docker',
+          ['cp', sourceContents, `${containerName}:${targetDirectory}`],
+          { encoding: 'utf-8', outputChannel }
+        );
+        if (copyResult.exitCode !== 0) {
+          throw new Error(
+            `Failed to copy local xp-kbt into container '${containerName}'. ${copyResult.output}`
+          );
+        }
+
+        await this.ensureCopiedKbtToolPermissions(
+          containerName,
+          targetDirectory,
+          outputChannel
+        );
+
+        Log.progress(progress, 'Verifying copied xp-kbt tools');
+        if (!(await this.isKbtAvailable(containerName, targetDirectory))) {
+          throw new Error(
+            `Files were copied, but executable XP tools were not found at '${targetDirectory}'. Make sure the selected folder contains the unpacked Linux xp-kbt release and preserves executable permissions.`
+          );
+        }
+
+        Log.progress(progress, `Local xp-kbt copied to ${containerName}:${targetDirectory}`);
+      }
+    );
+
+    return targetDirectory;
+  }
+
+  private static async ensureCopiedKbtToolPermissions(
+    containerName: string,
+    kbtBaseDirectory: string,
+    outputChannel: vscode.OutputChannel
+  ): Promise<void> {
+    const relativeToolPaths = [
+      'extra-tools/siemj/siemj',
+      'build-tools/normalize',
+      'build-tools/ecatest',
+      'build-tools/siemkb_tests',
+      'xp-sdk/cli/evt-tests',
+      'xp-sdk/cli/evt-xp-formatter',
+      'xp-sdk/cli/evt-xp-language-server'
+    ];
+
+    for (const relativeToolPath of relativeToolPaths) {
+      const toolPath = path.posix.join(kbtBaseDirectory, relativeToolPath);
+      const existsResult = await ProcessHelper.execute(
+        'docker',
+        ['exec', containerName, 'test', '-f', toolPath],
+        { encoding: 'utf-8' }
+      );
+      if (existsResult.exitCode !== 0) {
+        continue;
+      }
+
+      const chmodResult = await ProcessHelper.execute(
+        'docker',
+        ['exec', containerName, 'chmod', 'a+x', toolPath],
+        { encoding: 'utf-8', outputChannel }
+      );
+      if (chmodResult.exitCode !== 0) {
+        throw new Error(
+          `Failed to make copied KBT tool executable: '${toolPath}'. ${chmodResult.output}`
+        );
+      }
+    }
+  }
+
+  private static findLocalKbtRoot(selectedPath: string): string | undefined {
+    const normalizedPath = path.resolve(selectedPath);
+    if (this.looksLikeKbtRoot(normalizedPath)) {
+      return normalizedPath;
+    }
+
+    const childDirectories = fs
+      .readdirSync(normalizedPath, { withFileTypes: true })
+      .filter((entry) => entry.isDirectory())
+      .map((entry) => path.join(normalizedPath, entry.name))
+      .filter((candidate) => this.looksLikeKbtRoot(candidate));
+
+    return childDirectories.length === 1 ? childDirectories[0] : undefined;
+  }
+
+  private static looksLikeKbtRoot(candidatePath: string): boolean {
+    return (
+      fs.existsSync(path.join(candidatePath, 'extra-tools', 'siemj', 'siemj')) ||
+      fs.existsSync(path.join(candidatePath, 'build-tools', 'normalize'))
+    );
+  }
+
   private static async askContainerPath(
     prompt: string,
     value: string
@@ -613,7 +795,15 @@ export class MacOSContainerSetup {
       prompt,
       value,
       ignoreFocusOut: true,
-      validateInput: (input) => (input.startsWith('/') ? undefined : 'Use an absolute Linux path')
+      validateInput: (input) => {
+        if (!input.startsWith('/')) {
+          return 'Use an absolute Linux path';
+        }
+        if (/[\r\n\0:]/.test(input)) {
+          return 'The path contains unsupported characters';
+        }
+        return undefined;
+      }
     });
 
     return result?.replace(/\/+$/, '');

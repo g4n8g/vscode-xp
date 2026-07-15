@@ -42,7 +42,7 @@ Backend может быть любым Docker-контейнером, в кот�
 - host: `/Users/alice/Work/knowledgebase`
 - container: `/workspaces/knowledgebase`
 
-При запуске в локальном VS Code на macOS расширение предлагает настроить контейнерный backend. Wizard выбирает локальный путь к knowledgebase, проверяет Docker, выбирает запущенный контейнер или создаёт новый tools-контейнер, определяет container mount path, определяет или запрашивает путь к KBT и сохраняет настройки. Если xp-kbt не найден в выбранном контейнере, wizard может скачать latest release `vxcontrol/xp-kbt`, дать выбрать одну из доступных версий релизов или использовать вручную введённый путь к KBT. Новый контейнер создаётся на базе `mcr.microsoft.com/dotnet/sdk:8.0`, монтирует выбранную knowledgebase в `/workspaces/knowledgebase` и после создания проходит тот же шаг установки KBT.
+При запуске в локальном VS Code на macOS расширение предлагает настроить контейнерный backend. Wizard выбирает локальный путь к knowledgebase, проверяет Docker, выбирает запущенный контейнер или создаёт новый tools-контейнер, определяет container mount path, определяет или запрашивает путь к KBT и сохраняет настройки. Если xp-kbt не найден в выбранном контейнере, wizard может скачать latest release `vxcontrol/xp-kbt`, дать выбрать одну из доступных версий релизов, скопировать в контейнер уже распакованную локальную папку с Linux-версией KBT или использовать вручную введённый путь к KBT внутри контейнера. Новый контейнер создаётся на базе `mcr.microsoft.com/dotnet/sdk:8.0`, монтирует выбранную knowledgebase в `/workspaces/knowledgebase` и после создания проходит тот же шаг установки KBT.
 
 Если автоматическое уведомление было скрыто или настройку нужно повторить позже, используйте команду `XP: Настроить контейнерный backend для macOS` из палитры команд.
 
@@ -69,7 +69,7 @@ Troubleshooting:
 - Docker not installed: установите и запустите Docker Desktop.
 - Container not running: запустите контейнер с XP tools, выберите уже запущенный контейнер в wizard или повторите setup wizard и выберите создание нового контейнера.
 - Path mapping failed: проверьте, что `workspaceHostPath` указывает на локальную knowledgebase, а `workspaceContainerPath` совпадает с bind mount в контейнере.
-- Tool not found in container: запустите setup wizard ещё раз и выберите `Download latest xp-kbt`, `Choose xp-kbt version`, либо проверьте `xpConfig.docker.kbtBaseDirectory`.
+- Tool not found in container: запустите setup wizard ещё раз и выберите `Download latest xp-kbt`, `Choose xp-kbt version`, `Copy local xp-kbt folder`, либо проверьте `xpConfig.docker.kbtBaseDirectory`.
 - Native LSP starts but reports schema warnings: запустите сценарий сборки, который генерирует table schema, например сборку/тест, включающий генерацию схемы, а затем при необходимости перезапустите или перезагрузите расширение.
 - Native LSP на macOS не обязателен: если у вас нет нативного `evt-xp-language-server`, оставьте `xpConfig.lspServerExecutablePath` пустым. Docker-операции сборки и тестирования продолжат работать и без LSP-функций.
 
