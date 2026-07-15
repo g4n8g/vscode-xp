@@ -114,7 +114,7 @@ export class IntegrationTestEditorViewProvider {
         retainContextWhenHidden: true,
         enableFindWidget: true,
         enableScripts: true,
-        localResourceRoots: [vscode.Uri.joinPath(this.config.getExtensionUri(), 'client', 'out')]
+        localResourceRoots: [this.config.getExtensionUri()]
       }
     );
 
@@ -141,7 +141,8 @@ export class IntegrationTestEditorViewProvider {
     this.directoriesFilesWatcher.onDidDelete(this.onExternalTestFilesModification, this);
 
     this.view.webview.options = {
-      enableScripts: true
+      enableScripts: true,
+      localResourceRoots: [this.config.getExtensionUri()]
     };
 
     this.view.webview.onDidReceiveMessage(this.receiveMessageFromWebView, this);

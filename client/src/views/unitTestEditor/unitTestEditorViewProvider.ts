@@ -14,6 +14,7 @@ import { RuleBaseItem } from '../../models/content/ruleBaseItem';
 import { Enrichment } from '../../models/content/enrichment';
 import { Aggregation } from '../../models/content/aggregation';
 import { TestStatus } from '../../models/tests/testStatus';
+import { Log } from '../../extension';
 
 enum CloseUnitTestsAnswer {
   Yes = 1,
@@ -128,10 +129,7 @@ export class UnitTestContentEditorViewProvider extends WebViewProviderBase {
 
     panel.webview.options = {
       enableScripts: true,
-      localResourceRoots: [
-        vscode.Uri.joinPath(this.config.getExtensionUri(), 'client/webview/out/assets'),
-        vscode.Uri.joinPath(this.config.getExtensionUri(), 'client/webview/node_modules')
-      ]
+      localResourceRoots: [this.config.getExtensionUri()]
     };
 
     panel.webview.onDidReceiveMessage(this.receiveMessageFromWebView, this);
@@ -244,6 +242,8 @@ export class UnitTestContentEditorViewProvider extends WebViewProviderBase {
     const tests = [];
     const unitTests = this.rule.getUnitTests();
     const ruleData = await this.rule.getRuleCode();
+
+    Log.info(`Loaded ${unitTests.length} modular test(s) for rule ${this.rule.getName()}`);
 
     const templateTest = unitTests.length ? unitTests[0] : this.rule.createNewUnitTest();
     const defaultInputData = templateTest.getDefaultInputData();
@@ -373,7 +373,7 @@ export class UnitTestContentEditorViewProvider extends WebViewProviderBase {
 
           const handled =
             !this.toolBackendErrorShown &&
-            (await ExceptionHelper.showToolBackendUnavailableError(error, this.config));
+            ExceptionHelper.showToolBackendUnavailableError(error, this.config);
           if (handled) {
             this.toolBackendErrorShown = true;
           }

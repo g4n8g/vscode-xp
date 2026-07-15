@@ -90,10 +90,7 @@ export class TableListsEditorViewProvider extends WebViewProviderBase {
 
     this._view.webview.options = {
       enableScripts: true,
-      localResourceRoots: [
-        vscode.Uri.joinPath(this._config.getExtensionUri(), 'client/webview/out/assets'),
-        vscode.Uri.joinPath(this._config.getExtensionUri(), 'client/webview/node_modules')
-      ]
+      localResourceRoots: [this._config.getExtensionUri()]
     };
 
     this._view.webview.onDidReceiveMessage(this.receiveMessageFromWebView, this);

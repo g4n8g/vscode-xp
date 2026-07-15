@@ -86,7 +86,8 @@ export class LocalizationEditorViewProvider {
       }, this);
 
       this.view.webview.options = {
-        enableScripts: true
+        enableScripts: true,
+        localResourceRoots: [this.config.getExtensionUri()]
       };
 
       this.view.webview.onDidReceiveMessage(this.receiveMessageFromWebView, this);

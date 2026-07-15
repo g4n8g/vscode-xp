@@ -34,7 +34,10 @@ export abstract class BaseWebViewController {
         this.descriptor.viewId,
         this.getTitle(),
         vscode.ViewColumn.One,
-        this.descriptor.webViewOptions
+        {
+          ...this.descriptor.webViewOptions,
+          localResourceRoots: [this.descriptor.config.getExtensionUri()]
+        }
       );
 
       this.webView.webview.onDidReceiveMessage(this.receiveMessageFromWebViewDefault, this);

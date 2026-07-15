@@ -168,7 +168,8 @@ export class MetainfoViewProvider extends BaseWebViewController {
       webViewOptions: {
         enableScripts: true,
         enableFindWidget: true,
-        retainContextWhenHidden: true
+        retainContextWhenHidden: true,
+        localResourceRoots: [config.getExtensionUri()]
       }
     });
   }

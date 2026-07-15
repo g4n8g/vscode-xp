@@ -29,9 +29,9 @@ loader.config({
   paths: {
     // In development mode we load assets from the Vite dev server, in
     // production - from the assets folder inside of the .vsix archive
-    vs: `${window.__webview.webviewRootUri}/node_modules/monaco-editor/${
-      import.meta.env.DEV ? 'dev' : 'min'
-    }/vs`
+    vs: import.meta.env.DEV
+      ? `${window.__webview.webviewRootUri}/node_modules/monaco-editor/dev/vs`
+      : `${window.__webview.webviewRootUri}/out/assets/vendor/monaco/vs`
   }
 });
 

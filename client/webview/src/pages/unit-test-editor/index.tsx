@@ -18,11 +18,11 @@ function UnitTestEditor() {
     useCallback((message) => {
       switch (message.command) {
         case 'UnitTestEditor.setState':
-          setData(message.payload.tests);
           setRuleType(message.payload.ruleType);
           setRuleData(message.payload.ruleData);
           setDefaultInputData(message.payload.defaultInputData);
           setDefaultExpectationData(message.payload.defaultExpectationData);
+          setData(message.payload.tests);
           setIsDataReady(true);
           break;
 

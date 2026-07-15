@@ -42,7 +42,6 @@ class WebviewHtmlProvider {
             };
           </script>
           ${headTags}
-          <link href="${extensionBaseUri}/client/webview/node_modules/@vscode/codicons/dist/codicon.css" rel="stylesheet" />
         </head>
         <body>
           <div id="root"></div>

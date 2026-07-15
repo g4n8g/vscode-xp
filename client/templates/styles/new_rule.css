@@ -40,9 +40,8 @@ input:focus, select:focus {
 	outline: none;
 }
 
-input:invalid {
+input.name-invalid {
 	border: 1px solid var(--vscode-inputValidation-errorBorder);
-	/* color: var(--vscode-inputValidation-errorBorder); */
 	outline: none;
 }
 

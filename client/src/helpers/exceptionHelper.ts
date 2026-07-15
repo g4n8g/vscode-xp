@@ -64,10 +64,10 @@ export class ExceptionHelper {
     }
   }
 
-  public static async showToolBackendUnavailableError(
+  public static showToolBackendUnavailableError(
     error: unknown,
     configuration = Configuration.get()
-  ): Promise<boolean> {
+  ): boolean {
     if (!(error instanceof XpException) || !this.isToolBackendUnavailableError(error)) {
       return false;
     }
@@ -81,15 +81,15 @@ export class ExceptionHelper {
       ? [outputAction, configureAction]
       : [outputAction];
 
-    const selection = await vscode.window.showErrorMessage(error.message, ...actions);
-
-    if (selection === outputAction) {
-      await vscode.commands.executeCommand(CommonCommands.SHOW_OUTPUT_CHANNEL_COMMAND);
-    } else if (selection === configureAction) {
-      await vscode.commands.executeCommand(
-        CommonCommands.CONFIGURE_MACOS_CONTAINER_BACKEND_COMMAND
-      );
-    }
+    void vscode.window.showErrorMessage(error.message, ...actions).then((selection) => {
+      if (selection === outputAction) {
+        void vscode.commands.executeCommand(CommonCommands.SHOW_OUTPUT_CHANNEL_COMMAND);
+      } else if (selection === configureAction) {
+        void vscode.commands.executeCommand(
+          CommonCommands.CONFIGURE_MACOS_CONTAINER_BACKEND_COMMAND
+        );
+      }
+    });
 
     return true;
   }

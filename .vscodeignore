@@ -34,8 +34,6 @@
 
 !client/webview/out/
 !client/webview/out/**
-!client/webview/node_modules/monaco-editor/min/vs/**
-!client/webview/node_modules/@vscode/codicons/dist/**
 
 !node_modules/
 !node_modules/prettier/

@@ -6,7 +6,6 @@
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
 	<link rel="stylesheet" href="{{{extensionBaseUri}}}/client/templates/styles/new_rule.css">
 	
-	<script src="{{{ExtensionBaseUri}}}/client/templates/js/jquery-3.6.0.min.js"></script>
 </head>
 	<body>
 		<h3>{{{CreateNewRule}}}</h3>
@@ -14,7 +13,7 @@
 			<tr>
 				<td class="labels">{{{NameLabel}}}</td>
 				<td class="userinput">
-					<input id="Name" type="text" pattern="[A-Z][A-Za-z0-9_]+" required autofocus>
+					<input id="Name" type="text" pattern="[A-Za-z0-9_]+" required autofocus>
 				</td>
 			</tr>
 			<tr>
@@ -35,10 +34,23 @@
 
 	<script>
 		const vscode = acquireVsCodeApi();
+		const nameInput = document.getElementById("Name");
+
+		function updateNameValidity(showEmptyError = false) {
+			const shouldShowError = !nameInput.validity.valid && (showEmptyError || nameInput.value.length > 0);
+			nameInput.classList.toggle("name-invalid", shouldShowError);
+		}
+
+		nameInput.addEventListener("input", () => updateNameValidity());
+		nameInput.addEventListener("blur", () => updateNameValidity(true));
 		
 		function createCorrelation() {
-			
-			const name = document.getElementById("Name").value;
+			updateNameValidity(true);
+			if (!nameInput.reportValidity()) {
+				return;
+			}
+
+			const name = nameInput.value;
 			const type = document.getElementById("TemplateType").value;
 			const path = document.getElementById("Path").value;
 			
