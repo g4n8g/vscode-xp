@@ -34,6 +34,21 @@ body {
 	box-shadow: none;
 }
 
+.correlation-actions {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	flex-wrap: wrap;
+}
+
+.correlation-actions input[type=button] {
+	float: none;
+}
+
+.correlation-actions #normalizeEvents {
+	margin-left: auto;
+}
+
 .save[type=button]{
 	width: 15%;
 	min-width: 100px;
@@ -46,6 +61,20 @@ body {
 }
 .save:hover {
 	background-color: var(--vscode-button-hoverBackground);
+}
+
+.secondary-action[type=button]{
+	width: 15%;
+	min-width: 100px;
+	height: 27px;
+	background-color: var(--vscode-button-secondaryBackground);
+	color: var(--vscode-button-secondaryForeground);
+	border: 1px solid var(--vscode-contrastBorder, var(--vscode-button-border, var(--vscode-panel-border)));
+	cursor: pointer;
+}
+
+.secondary-action:hover {
+	background-color: var(--vscode-button-secondaryHoverBackground);
 }
 
 .run {

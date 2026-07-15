@@ -185,10 +185,17 @@
 
     "View.CorrelateEvents.Title": "Correlate Events",
     "View.CorrelateEvents.RawEventsLabel": "Events (as JSON Lines) in Envelope",
-    "View.CorrelateEvents.CorrelateEventsLabel": "Correlated Events",
+    "View.CorrelateEvents.ResultLabel": "Processing Result",
     "View.CorrelateEvents.CorrelateEventsButton": "Run Correlation",
+    "View.CorrelateEvents.NormalizeButton": "Normalize",
+    "View.CorrelateEvents.NormalizeAndEnrichButton": "Normalize and Enrich",
     "View.CorrelateEvents.WordWrapCheckBox": "Word Wrap",
     "View.CorrelateEvents.WrapRawEventsInAnEnvelope" : "Envelope Wrap",
+    "View.CorrelateEvents.Progress.Correlation": "Correlating events",
+    "View.CorrelateEvents.Progress.Normalization": "Normalizing events",
+    "View.CorrelateEvents.Progress.NormalizationAndEnrichment": "Normalizing and enriching events",
+    "View.CorrelateEvents.Message.SuccessfulNormalization": "Successfully normalized events for directory {0}",
+    "View.CorrelateEvents.Message.SuccessfulNormalizationAndEnrichment": "Successfully normalized and enriched events for directory {0}",
 
     "View.Localization.Title": "Localization for {0}",
     "View.Localization.Description": "Rule Description",

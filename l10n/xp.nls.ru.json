@@ -185,10 +185,17 @@
 
     "View.CorrelateEvents.Title": "Корреляция событий",
     "View.CorrelateEvents.RawEventsLabel": "События (JSON Lines) в конверте",
-    "View.CorrelateEvents.CorrelateEventsLabel": "Корреляционные события",
+    "View.CorrelateEvents.ResultLabel": "Результат обработки",
     "View.CorrelateEvents.CorrelateEventsButton": "Запустить корреляцию",
+    "View.CorrelateEvents.NormalizeButton": "Нормализовать",
+    "View.CorrelateEvents.NormalizeAndEnrichButton": "Нормализовать и обогатить",
     "View.CorrelateEvents.WordWrapCheckBox": "Переносить по словам",
     "View.CorrelateEvents.WrapRawEventsInAnEnvelope" : "Обернуть в конверт",
+    "View.CorrelateEvents.Progress.Correlation": "Корреляция событий",
+    "View.CorrelateEvents.Progress.Normalization": "Нормализация событий",
+    "View.CorrelateEvents.Progress.NormalizationAndEnrichment": "Нормализация и обогащение событий",
+    "View.CorrelateEvents.Message.SuccessfulNormalization": "Нормализация событий для директории {0} завершена успешно",
+    "View.CorrelateEvents.Message.SuccessfulNormalizationAndEnrichment": "Нормализация и обогащение событий для директории {0} завершены успешно",
 
     "View.Localization.Title": "Локализация {0}",
     "View.Localization.Description": "Описание правила",

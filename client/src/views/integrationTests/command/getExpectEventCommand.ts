@@ -1,6 +1,5 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
-import * as os from 'os';
 import * as fs from 'fs';
 
 import { IntegrationTestParams } from '../../../models/command/command';
@@ -16,6 +15,7 @@ import { IntegrationTestEditorViewProvider } from '../integrationTestEditorViewP
 import { JsHelper } from '../../../helpers/jsHelper';
 import { Correlation } from '../../../models/content/correlation';
 import { Enrichment } from '../../../models/content/enrichment';
+import { Log } from '../../../extension';
 
 // TODO: вынести под общий интерфейс провайдеров
 export class GetExpectedEventCommand {
@@ -221,6 +221,10 @@ export class GetExpectedEventCommand {
       );
     }
 
+    Log.info(
+      `Replacing expected event for integration test #${this.params.test.getNumber()} using '${actualEventsFilePath}'`
+    );
+
     // Событие может прилетать не одно
     const actualEventsString = await FileSystemHelper.readContentFile(actualEventsFilePath);
     if (!actualEventsString) {
@@ -269,6 +273,15 @@ export class GetExpectedEventCommand {
   private async getActualEventsFilePath(): Promise<string> {
     const rule = this.params.rule;
     const ruleName = this.params.rule.getName();
+    const resultFiles = this.params.test.getResultFiles();
+
+    if (resultFiles?.actualEventsFilePath) {
+      return resultFiles.actualEventsFilePath;
+    }
+
+    if (resultFiles?.detailedReportFilePath) {
+      return resultFiles.detailedReportFilePath;
+    }
 
     if (rule instanceof Correlation) {
       return TestHelper.getEnrichedCorrEventFilePath(

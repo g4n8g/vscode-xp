@@ -24,8 +24,10 @@
 	<body>
 		<!-- Common Panel -->
 		<div id="header">
-			<div id="navigation">
-				<input id="runFullGraph" class="run" name="full_test" type="button" value="{{Locale.CorrelateEventsButton}}">
+			<div id="navigation" class="correlation-actions">
+				<input id="runFullGraph" class="save" name="full_test" type="button" value="{{Locale.CorrelateEventsButton}}">
+				<input id="normalizeEvents" class="secondary-action" name="normalize_events" type="button" value="{{Locale.NormalizeEventsButton}}">
+				<input id="normalizeAndEnrichEvents" class="secondary-action" name="normalize_and_enrich_events" type="button" value="{{Locale.NormalizeAndEnrichEventsButton}}">
 			</div>
 	    </div>
 
@@ -50,7 +52,6 @@
 							<div name="add_envelope">text/xml</div>
 						</div>
 					</div>
-					<!-- <input name="normalize" type="button" value="Нормализовать"> -->
 				</div>
 				<div class="text">
 					<textarea id="raw_events">{{RawEvents}}</textarea>
@@ -61,7 +62,7 @@
 			<div class="test_block">
 				<div class="block_header">
 					<div class="scrolldown" onclick="toggleTextarea(this)">ᐯ</div>
-					<label for="norm_event" class="label">{{Locale.CorrelateEventsLabel}}:</label>
+					<label for="norm_event" class="label">{{Locale.ResultLabel}}:</label>
 				</div>
 				<div class="text">
 					<div contenteditable="true" id="correlated_events" name="correlated_events">
@@ -107,7 +108,7 @@
 				(event) => {
 					const message = event.data; 
 					switch (message.command) {
-						case 'correlatedEvents': {
+						case 'processingResult': {
 							
 							// Очищаем предыдущий вывод событий.
 							$('#correlated_events').html('');
@@ -145,6 +146,26 @@
 					const rawEvents = $('#raw_events').val();
 					vscode.postMessage({
 						command: 'runFullGraph',
+						rawEvents : rawEvents
+					});
+				});
+
+				$(document).on("click",'#normalizeEvents', function () {
+					$('#correlated_events').html('');
+
+					const rawEvents = $('#raw_events').val();
+					vscode.postMessage({
+						command: 'normalizeEvents',
+						rawEvents : rawEvents
+					});
+				});
+
+				$(document).on("click",'#normalizeAndEnrichEvents', function () {
+					$('#correlated_events').html('');
+
+					const rawEvents = $('#raw_events').val();
+					vscode.postMessage({
+						command: 'normalizeAndEnrichEvents',
 						rawEvents : rawEvents
 					});
 				});

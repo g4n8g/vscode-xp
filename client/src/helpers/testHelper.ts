@@ -15,6 +15,7 @@ import { JsHelper } from './jsHelper';
 import { Normalization } from '../models/content/normalization';
 import { Configuration } from '../models/configuration';
 import { GetSIEMJVersion, SIEMJVersion } from '../models/siemj/siemjManager';
+import { parseSiemj2Events } from './siemj2EventsParser';
 
 export type EventMimeType =
   | 'application/x-pt-eventlog'
@@ -276,34 +277,21 @@ export class TestHelper {
   ): string[] {
     const siemjVersion = GetSIEMJVersion(config);
     if (siemjVersion == SIEMJVersion.Second) {
-      if (!actualEventsString.match(/\[FromCorrelator\]/)) {
+      const events = parseSiemj2Events(actualEventsString);
+      Log.info(
+        `Parsed SIEMJ 2 integration-test result: format=${
+          actualEventsString.includes('[FromCorrelator]') ? 'pipeline-report' : 'json-events'
+        }, events=${events.length}, characters=${actualEventsString.length}`
+      );
+      if (events.length === 0) {
         throw new XpException(
           `Фактическое событие интеграционного теста №${testNumber} правила ${ruleName} пусто`
         );
       }
-      const eventsPart = actualEventsString.split('[FromCorrelator]')[1];
-      const lines = eventsPart.split(os.EOL).filter((l) => l.startsWith('[FromEnricher]'));
 
-      if (lines.length != 1) {
-        throw new XpException(
-          `Неожиданная структура файла с результатами запуска теста ${testNumber} правила ${ruleName}`
-        );
-      }
-
-      const evt = lines[0].replace('[FromEnricher]', '').trim();
-      const jsonObject = JSON.parse(evt);
-      return [JSON.stringify(jsonObject)];
-
-      // const normStateRegex = /\[FromCorrelator\].*\[FromEnricher\]\s+({.*})\n/gs;
-      // const normStateMatch = [...actualEventsString.matchAll(normStateRegex)];
-
-      // //TODO: check if more than one correlation event
-      // if (normStateMatch && normStateMatch.length === 1) {
-      //   const jsonObject = JSON.parse(normStateMatch[0][1]);
-      //   return [JSON.stringify(jsonObject)];
-      // }
+      return events;
     } else {
-      return actualEventsString.split(os.EOL).filter((l) => l);
+      return actualEventsString.split(/\r?\n/).filter((l) => l);
     }
   }
 

@@ -13,6 +13,8 @@ import { Enveloper } from '../../models/enveloper';
 import { Log } from '../../extension';
 import { CorrGraphRunner } from './corrGraphRunner';
 
+type CorrelationGraphAction = 'correlate' | 'normalize' | 'normalizeAndEnrich';
+
 export class RunningCorrelationGraphProvider {
   public static viewId = 'RunningEventsOnCorrelationGraphView';
 
@@ -67,7 +69,8 @@ export class RunningCorrelationGraphProvider {
     );
 
     this.view.webview.options = {
-      enableScripts: true
+      enableScripts: true,
+      localResourceRoots: [this.config.getExtensionUri()]
     };
 
     this.view.webview.onDidReceiveMessage(this.receiveMessageFromWebView, this);
@@ -79,9 +82,13 @@ export class RunningCorrelationGraphProvider {
         ExtensionBaseUri: extensionBaseUri,
         Locale: {
           RawEventsLabel: this.config.getMessage('View.CorrelateEvents.RawEventsLabel'),
-          CorrelateEventsLabel: this.config.getMessage('View.CorrelateEvents.CorrelateEventsLabel'),
+          ResultLabel: this.config.getMessage('View.CorrelateEvents.ResultLabel'),
           CorrelateEventsButton: this.config.getMessage(
             'View.CorrelateEvents.CorrelateEventsButton'
+          ),
+          NormalizeEventsButton: this.config.getMessage('View.CorrelateEvents.NormalizeButton'),
+          NormalizeAndEnrichEventsButton: this.config.getMessage(
+            'View.CorrelateEvents.NormalizeAndEnrichButton'
           ),
           WordWrapCheckBox: this.config.getMessage('View.CorrelateEvents.WordWrapCheckBox'),
           WrapRawEventsInAnEnvelope: this.config.getMessage(
@@ -106,7 +113,27 @@ export class RunningCorrelationGraphProvider {
           DialogHelper.showError('Добавьте сырые события и повторите действие');
           return;
         }
-        await this.corrGraphRun(rawEvents);
+        await this.processRawEvents(rawEvents, 'correlate');
+        break;
+      }
+      case 'normalizeEvents': {
+        const rawEvents = message.rawEvents;
+
+        if (!rawEvents) {
+          DialogHelper.showError('Добавьте сырые события и повторите действие');
+          return;
+        }
+        await this.processRawEvents(rawEvents, 'normalize');
+        break;
+      }
+      case 'normalizeAndEnrichEvents': {
+        const rawEvents = message.rawEvents;
+
+        if (!rawEvents) {
+          DialogHelper.showError('Добавьте сырые события и повторите действие');
+          return;
+        }
+        await this.processRawEvents(rawEvents, 'normalizeAndEnrich');
         break;
       }
       case 'addEnvelope': {
@@ -134,17 +161,20 @@ export class RunningCorrelationGraphProvider {
     }
   }
 
-  private async corrGraphRun(rawEvents: string): Promise<void> {
-    Log.info('Event correlation started');
+  private async processRawEvents(
+    rawEvents: string,
+    action: CorrelationGraphAction
+  ): Promise<void> {
+    Log.info(`Correlation graph action started: ${action}`);
 
     // Прогоняем событие по графам для каждой из корневых директорий текущего режима
     const rootPaths = this.config.getContentRoots();
-    rootPaths.forEach((rootPath) => {
-      vscode.window.withProgress(
+    for (const rootPath of rootPaths) {
+      await vscode.window.withProgress(
         {
           location: vscode.ProgressLocation.Notification,
           cancellable: true,
-          title: this.config.getMessage('View.CorrelateEvents.Title')
+          title: this.getProgressTitle(action)
         },
         async (progress, cancellationToken) => {
           try {
@@ -162,53 +192,96 @@ export class RunningCorrelationGraphProvider {
             await FileSystemHelper.writeContentFile(rawEventsFilePath, rawEvents);
 
             const runner = new CorrGraphRunner(this.config);
-            const correlatedEventsString = await runner.run(rootPath, rawEventsFilePath);
+            let resultEventsString: string;
+            switch (action) {
+              case 'normalize':
+                progress.report({
+                  message: this.config.getMessage('View.CorrelateEvents.Progress.Normalization')
+                });
+                resultEventsString = await runner.normalize(rootPath, rawEventsFilePath);
+                break;
 
-            if (!correlatedEventsString) {
+              case 'normalizeAndEnrich':
+                progress.report({
+                  message: this.config.getMessage(
+                    'View.CorrelateEvents.Progress.NormalizationAndEnrichment'
+                  )
+                });
+                resultEventsString = await runner.normalizeAndEnrich(rootPath, rawEventsFilePath);
+                break;
+
+              case 'correlate':
+                progress.report({
+                  message: this.config.getMessage('View.CorrelateEvents.Progress.Correlation')
+                });
+                resultEventsString = await runner.run(rootPath, rawEventsFilePath);
+                break;
+            }
+
+            if (!resultEventsString) {
+              if (action === 'correlate') {
+                DialogHelper.showInfo(
+                  `По этим событиям не произошло ни одной сработки корреляции из папки ${rootFolder}.`
+                );
+              } else {
+                DialogHelper.showError(
+                  `Не удалось обработать события с использованием графа для директории ${rootFolder}.`
+                );
+              }
+              return;
+            }
+
+            let formattedEvents: string;
+            if (action === 'correlate') {
+              // Извлекаем имена сработавших корреляций.
+              const correlationNames = RegExpHelper.getAllStrings(
+                resultEventsString,
+                /"correlation_name"\s*:\s*"(.*?)"/g
+              );
+              if (!correlationNames) {
+                DialogHelper.showError(
+                  `Не удалось коррелировать нормализованные события с использованием графа для директории ${path.basename(rootPath)}.`
+                );
+                return;
+              }
+
+              const cleanedEvents = TestHelper.removeFieldsFromJsonl(
+                resultEventsString,
+                '_rule',
+                'generator.version',
+                'siem_id',
+                'uuid',
+                '_subjects',
+                '_objects',
+                'subevents',
+                'subevents.time'
+              );
+              formattedEvents = TestHelper.formatTestCodeAndEvents(cleanedEvents);
               DialogHelper.showInfo(
-                `По этим событиям не произошло ни одной сработки корреляции из папки ${rootFolder}.`
+                `Количество сработавших корреляций: ${correlationNames.length}`
               );
-              return;
+            } else {
+              formattedEvents = TestHelper.formatTestCodeAndEvents(resultEventsString);
+              DialogHelper.showInfo(this.getSuccessMessage(action, rootFolder));
             }
 
-            // Извлекаем имена сработавших корреляций.
-            const correlationNames = RegExpHelper.getAllStrings(
-              correlatedEventsString,
-              /"correlation_name"\s*:\s*"(.*?)"/g
-            );
-            if (!correlationNames) {
-              DialogHelper.showError(
-                `Не удалось коррелировать нормализованные события с использованием графа для директории ${path.basename(rootPath)}.`
-              );
-              return;
-            }
-
-            // Очищаем от лишних полей и форматируем для вывода на FE.
-            const cleanedEvents = TestHelper.removeFieldsFromJsonl(
-              correlatedEventsString,
-              '_rule',
-              'generator.version',
-              'siem_id',
-              'uuid',
-              '_subjects',
-              '_objects',
-              'subevents',
-              'subevents.time'
-            );
-            const formattedEvents = TestHelper.formatTestCodeAndEvents(cleanedEvents);
-
-            DialogHelper.showInfo(`Количество сработавших корреляций: ${correlationNames.length}`);
             // Отдаем события во front-end.
             this.view.webview.postMessage({
-              command: 'correlatedEvents',
+              command: 'processingResult',
               events: formattedEvents
             });
           } catch (error) {
-            ExceptionHelper.show(error);
+            const handled = await ExceptionHelper.showToolBackendUnavailableError(
+              error,
+              this.config
+            );
+            if (!handled) {
+              ExceptionHelper.show(error);
+            }
           }
         }
       );
-    });
+    }
   }
 
   public async addEnvelope(rawEventsString: string, mimeType: EventMimeType): Promise<void> {
@@ -235,4 +308,34 @@ export class RunningCorrelationGraphProvider {
   public static RAW_EVENTS_FILENAME = 'raw_events.json';
 
   private view: vscode.WebviewPanel;
+
+  private getProgressTitle(action: CorrelationGraphAction): string {
+    switch (action) {
+      case 'normalize':
+        return this.config.getMessage('View.CorrelateEvents.Progress.Normalization');
+      case 'normalizeAndEnrich':
+        return this.config.getMessage(
+          'View.CorrelateEvents.Progress.NormalizationAndEnrichment'
+        );
+      case 'correlate':
+        return this.config.getMessage('View.CorrelateEvents.Title');
+    }
+  }
+
+  private getSuccessMessage(action: CorrelationGraphAction, rootFolder: string): string {
+    switch (action) {
+      case 'normalize':
+        return this.config.getMessage(
+          'View.CorrelateEvents.Message.SuccessfulNormalization',
+          rootFolder
+        );
+      case 'normalizeAndEnrich':
+        return this.config.getMessage(
+          'View.CorrelateEvents.Message.SuccessfulNormalizationAndEnrichment',
+          rootFolder
+        );
+      case 'correlate':
+        return this.config.getMessage('View.CorrelateEvents.Title');
+    }
+  }
 }
