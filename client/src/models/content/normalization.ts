@@ -25,11 +25,8 @@ export class Normalization extends RuleBaseItem {
   }
 
   protected getId(): string {
-    const matches = this._ruleCode.match(/id\s*=\s*"(.*?)"/);
-    if (matches.length != 2) {
-      return this.name;
-    }
-    return matches[1];
+    const matches = /^\s*id\s*=\s*"([^"]+)"/m.exec(this._ruleCode ?? '');
+    return matches?.[1] ?? this.name;
   }
 
   /**

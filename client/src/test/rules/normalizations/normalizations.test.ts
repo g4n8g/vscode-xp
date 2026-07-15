@@ -6,6 +6,7 @@ import { getDocUri, testCompletion, TestFixture } from '../../helper';
 import { Normalization } from '../../../models/content/normalization';
 import { ContentTreeProvider } from '../../../views/contentTree/contentTreeProvider';
 import { Configuration } from '../../../models/configuration';
+import { Localization } from '../../../models/content/localization';
 
 suite('Нормализация', () => {
   const docUri = getDocUri(path.join('completion', 'completion.xp'));
@@ -62,5 +63,34 @@ suite('Нормализация', () => {
     const expectedObjectId = 'LOC-NF-196826125';
     assert.strictEqual(normalization.generateObjectId(), expectedObjectId);
     assert.strictEqual(normalization.getMetaInfo().getObjectId(), expectedObjectId);
+  });
+
+  test('LocalizationId новых критериев строится из id правила нормализации', async () => {
+    const normalizationId =
+      'PT_Kaspersky_Kaspersky_Container_Security_syslog_bnch_cluster_scanning';
+    const normalization = Normalization.create('bnch_cluster_scanning', TestFixture.getTmpPath());
+    await normalization.setRuleCode(`id = "${normalizationId}"`, false);
+
+    ['BNCH-102', 'BNCH-101', 'BNCH-103', 'BNCH-104'].forEach((msgid) => {
+      normalization.addLocalization(
+        Localization.create(
+          `id = "${normalizationId}" and msgid = "${msgid}"`,
+          '',
+          ''
+        )
+      );
+    });
+
+    assert.deepStrictEqual(
+      normalization.getLocalizations().map((localization) => localization.getLocalizationId()),
+      [normalizationId, `${normalizationId}_2`, `${normalizationId}_3`, `${normalizationId}_4`]
+    );
+    assert.deepStrictEqual(
+      normalization
+        .getMetaInfo()
+        .getEventDescriptions()
+        .map((description) => description.getLocalizationId()),
+      [normalizationId, `${normalizationId}_2`, `${normalizationId}_3`, `${normalizationId}_4`]
+    );
   });
 });
